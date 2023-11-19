@@ -75,11 +75,11 @@ void free_cache()
 {	uint32_t num_cache_lines = cache_size / cache_block_size;
 	uint32_t num_sets = num_cache_lines / cache_associativity;
 
-	// free memory for each set
+	//free memory for each set
     for (uint32_t i = 0; i < num_sets; ++i) {
         free(cache[i]);
     }
-    // free memory for the cache
+    //free memory for cache
     free(cache);
 	return;
 }
@@ -102,6 +102,8 @@ void print_cache_statistics()
  * The return value is always a HIT or a MISS and never an ERROR.
  */
 
+
+//TODO: WORKING ON THIS, SEE IF U CAN FIGURE IT OUT
 op_result_t read_from_cache(uint32_t pa) 
 {
 	uint32_t num_cache_lines = cache_size / cache_block_size;
@@ -109,10 +111,49 @@ op_result_t read_from_cache(uint32_t pa)
 	uint32_t set_index = (pa / cache_block_size)% num_sets;
 	uint32_t tag = pa / (cache_block_size * num_sets);
 
-	
+	for (uint32_t i = 0; i < cache_associativity; i++) {
+        // check if the valid bit is set and tag matches block
+        if (cache[set_index][i].valid && cache[set_index][i].tag == tag) {
+            //cache hit
+            cache_total_accesses++;
+            cache_hits++;
+            cache_read_accesses++;
+            cache_read_hits++;
+            return HIT;
+        }
+    }
+	//else cache miss
+    cache_total_accesses++;
+    cache_misses++;
+    cache_read_accesses++;
 
+	 for (uint32_t i = 0; i < cache_associativity; i++) {
+		//read from memory instead and store in cache
+        if (!cache[set_index][i].valid) {
+           
+			fetch_block_from_memory(pa, cache[set_index][i].data)
 
-	return ERROR;
+            cache[set_index][i].valid = 1;
+            cache[set_index][i].tag = tag;
+            
+            return MISS;
+        }
+}
+/*
+*
+*replacement policy goes here
+*
+*/
+
+}
+
+void fetch_block_from_memory(uint32_t pa, block_t *evicted_block)
+{
+    uint32_t memory_data = read_from_memory(pa);
+
+    // update the cache block with the fetched data
+    evicted_block.data = memory_data;
+    evicted_block.dirty = 0; //mark the block as not dirty
 }
 
 /*
@@ -192,11 +233,11 @@ void handle_cache_verbose(memory_access_entry_t entry, op_result_t ret)
 int check_cache_parameters_valid()
 {
 	if (cache_size <= 0 || cache_associativity <=0 || cache_block_size <=0){
-		printf("Size, associativity and block size must be non negative.\n");
+		printf("Size, associativity and block size must be non negative.\n"); //check if parameters are non negative
 		return -1;
 	}
 
-	if(!is_power_of_two(cache_size)||!is_power_of_two(cache_block_size)){
+	if(!is_power_of_two(cache_size)||!is_power_of_two(cache_block_size)){//check 
 		printf("Size and block size must be powers of two.\n");
 		return -1;
 	}
