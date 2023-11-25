@@ -51,6 +51,7 @@ op_result_t read_from_cache(uint32_t pa)
             cache_hits++;
             cache_read_accesses++;
             cache_read_hits++;
+            
 
             // loop through lru counter structure and find matching tags, increment counter for that block
             for (uint32_t j = 0; j < cache_associativity; j++) {
@@ -161,6 +162,13 @@ int process_arg_B(int opt, char *optarg)
 // When verbose is true, print the details of each operation -- MISS or HIT.
 void handle_cache_verbose(memory_access_entry_t entry, op_result_t ret)
 {
+    {
+    if (verbose) {
+        char operation_type = entry.accesstype == READ ? 'R' : 'W';
+        printf("%c 0x%08x CACHE-%s\n", operation_type, entry.address, ret == HIT ? "HIT" : "MISS");
+    }
+    }
+
 	if (ret == ERROR) {
 		printf("This message should not be printed. Fix your code\n");
 	}
@@ -187,7 +195,7 @@ int is_power_of_two(uint32_t num){
 int check_cache_parameters_valid()
 {
 	if (cache_size <= 0 || cache_associativity <=0 || cache_block_size <=0){
-		printf("Invalid configuration\n"); //check if parameters are non negative
+		printf("Invalid configuration\n"); //check that parameters are non negative
 		return 1;
 	}
 
