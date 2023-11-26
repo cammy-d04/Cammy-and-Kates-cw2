@@ -79,7 +79,15 @@ void initialize_cache()
 	uint32_t num_cache_lines = cache_size/cache_block_size;
 	uint32_t num_sets = num_cache_lines / cache_associativity;
 
-	cache = (block_t**)malloc(num_sets * sizeof(block_t *));
+	cache = (block_t**)calloc(num_sets, sizeof(block_t*)); // allocate memory space to cache
+
+
+	for (uint32_t set = 0; set < num_sets; set++) {
+    	cache[set] = (block_t *)calloc(cache_associativity, sizeof(block_t));
+	}
+
+    //initialise tag_counter map for new cache
+    tag_counter_map = (tag_lru_mapping_t*)malloc(cache_associativity * sizeof(tag_lru_mapping_t));
 	return; 
 }
 
@@ -94,6 +102,8 @@ void free_cache()
     for (uint32_t i = 0; i < num_sets; ++i) {
         free(cache[i]);
     }
+    // free memory for the tag counter map array
+    free(tag_counter_map);
     // free memory for the cache
     free(cache);
 	return;
@@ -117,21 +127,23 @@ op_result_t read_from_cache(uint32_t pa)
 {
     uint32_t num_cache_lines = cache_size / cache_block_size;
     uint32_t num_sets = num_cache_lines / cache_associativity;
-    uint32_t set_index = (pa / cache_block_size) % num_sets; // find target block ensure mapped to index within 0 to (num_sets-1)
+    uint32_t set_index = (pa / cache_block_size) % num_sets;
     uint32_t tag = pa / (cache_block_size * num_sets);
 
+    
+
     for (uint32_t i = 0; i < cache_associativity; i++) {
-        // check if the valid bit is set and tag matches block
+        // Check if the valid bit is set and tag matches block
         if (cache[set_index][i].valid && cache[set_index][i].tag == tag) {
-            // cache hit
-            //increment stats
+            // Cache hit
+
+            // Increment stats
             cache_total_accesses++;
             cache_hits++;
             cache_read_accesses++;
             cache_read_hits++;
-            
 
-            // loop through lru counter structure and find matching tags, increment counter for that block
+            // Loop through the LRU counter structure and find matching tags, increment counter for that block
             for (uint32_t j = 0; j < cache_associativity; j++) {
                 if (tag_counter_map[j].tag == cache[set_index][i].tag) {
                     tag_counter_map[j].lru_counter = global_lru_counter;
@@ -143,8 +155,8 @@ op_result_t read_from_cache(uint32_t pa)
         }
     }
 
-    // cache miss
-    // increment stats
+
+    // Increment stats
     cache_total_accesses++;
     cache_misses++;
     cache_read_accesses++;
@@ -153,20 +165,19 @@ op_result_t read_from_cache(uint32_t pa)
     uint32_t min_lru_counter = tag_counter_map[0].lru_counter;
 
     for (uint32_t i = 1; i < cache_associativity; i++) {
-        // find least recently used cache line
+        // Find least recently used cache line
         if (tag_counter_map[i].lru_counter < min_lru_counter) {
             min_lru_counter = tag_counter_map[i].lru_counter;
             lru_index = i;
         }
     }
 
-    //r ead from memory and store in cache
-    read_from_memory(pa);
 
+    // Update the cache with the new block
     cache[set_index][lru_index].valid = 1;
     cache[set_index][lru_index].tag = tag;
 
-    // update LRU counter for the accessed line
+    // Update LRU counter for the accessed line
     tag_counter_map[lru_index].lru_counter = global_lru_counter;
     global_lru_counter++;
 
