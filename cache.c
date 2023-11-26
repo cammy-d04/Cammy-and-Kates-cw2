@@ -35,6 +35,84 @@ uint32_t global_lru_counter;
  * No need to implement the logic for this function.
  * Call this function when cache needs to read from memory.
  */
+
+
+/*
+ * Perform a read from the memory for a particular address.
+ * Since this is a cache-simulation, memory is not involved.
+ * No need to implement the logic for this function.
+ * Call this function when cache needs to read from memory.
+ */
+int read_from_memory(uint32_t pa) 
+{
+	return 0;
+}
+
+/*
+ * Perform a write from the cache to memory for a particular address.
+ * Since this is a cache-simulation, memory is not involved.
+ * No need to implement the logic for this function.
+ * Call this function when cache needs to write to memory.
+ */
+int write_to_memory(uint32_t pa)
+{
+	return 0;
+}
+
+/*
+ *********************************************************
+  Please edit the below functions for Part 1. 
+  You are allowed to add more functions that may help you
+  with your implementation. However, please do not add
+  them in any file. All your new code should be in cache.c
+  file below this line. 
+ *********************************************************
+*/
+
+/*
+ * Initialize the cache depending on the input parameters S, A, and B 
+ * and the statistics counter. The cache is declared in as extern in 
+ * include/cache.h file.
+ */
+void initialize_cache()
+{
+	uint32_t num_cache_lines = cache_size/cache_block_size;
+	uint32_t num_sets = num_cache_lines / cache_associativity;
+
+	cache = (block_t**)malloc(num_sets * sizeof(block_t *));
+	return; 
+}
+
+/*
+ * Free the allocated memory for the cache to avoid memory leaks.
+ */
+void free_cache()
+{	uint32_t num_cache_lines = cache_size / cache_block_size;
+	uint32_t num_sets = num_cache_lines / cache_associativity;
+
+	// free memory for each set
+    for (uint32_t i = 0; i < num_sets; ++i) {
+        free(cache[i]);
+    }
+    // free memory for the cache
+    free(cache);
+	return;
+}
+
+// Print cache statistics.
+void print_cache_statistics()
+{
+	printf("total accesses: %d\n", cache_total_accesses);
+	printf("hits: %d\n", cache_hits);
+	printf("misses: %d\n", cache_misses);
+	printf("total reads: %d\n", cache_read_accesses);
+	printf("read hits: %d\n", cache_read_hits);
+	printf("total writes: %d\n", cache_write_accesses);
+	printf("write hits: %d\n", cache_write_hits);
+}
+
+
+
 op_result_t read_from_cache(uint32_t pa) 
 {
     uint32_t num_cache_lines = cache_size / cache_block_size;
