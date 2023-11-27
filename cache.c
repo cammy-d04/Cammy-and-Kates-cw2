@@ -190,7 +190,62 @@ op_result_t read_from_cache(uint32_t pa)
  */
 op_result_t write_to_cache(uint32_t pa)
 {
-	return ERROR;
+    uint32_t num_cache_lines = cache_size / cache_block_size;
+    uint32_t num_sets = num_cache_lines / cache_associativity;
+    uint32_t set_index = (pa / cache_block_size) % num_sets;
+    uint32_t tag = pa / (cache_block_size * num_sets);
+
+    for (uint32_t i = 0; i < cache_associativity; i++) {
+        // Check if the valid bit is set and tag matches block
+        if (cache[set_index][i].valid && cache[set_index][i].tag == tag) {
+            // Cache hit
+
+            // Increment stats
+            cache_total_accesses++;
+            cache_hits++;
+            cache_write_accesses++;
+            cache_write_hits++;
+
+            // Loop through the LRU counter structure and find matching tags, increment counter for that block
+            for (uint32_t j = 0; j < cache_associativity; j++) {
+                if (tag_counter_map[j].tag == cache[set_index][i].tag) {
+                    tag_counter_map[j].lru_counter = global_lru_counter;
+                    global_lru_counter++;
+                    break;
+                }
+            }
+            return HIT;
+        }
+    }
+
+    // Increment stats
+    cache_total_accesses++;
+    cache_misses++;
+    cache_write_accesses++;
+
+    uint32_t lru_index = 0;
+    uint32_t min_lru_counter = tag_counter_map[0].lru_counter;
+
+    for (uint32_t i = 1; i < cache_associativity; i++) {
+        // Find least recently used cache line
+        if (tag_counter_map[i].lru_counter < min_lru_counter) {
+            min_lru_counter = tag_counter_map[i].lru_counter;
+            lru_index = i;
+        }
+    }
+
+    // Update the cache with the new block
+    cache[set_index][lru_index].valid = 1;
+    cache[set_index][lru_index].tag = tag;
+
+    // Update LRU counter for the accessed line
+    tag_counter_map[lru_index].lru_counter = global_lru_counter;
+    global_lru_counter++;
+
+    write_to_memory(pa);
+
+    return MISS;
+
 }
 
 // Process the S parameter properly and initialize `cache_size`.
