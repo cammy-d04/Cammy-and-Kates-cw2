@@ -28,15 +28,6 @@ tag_lru_mapping_t *tag_counter_map;
 //stores value of counter 
 uint32_t global_lru_counter;
 
-
-/*
- * Perform a read from the memory for a particular address.
- * Since this is a cache-simulation, memory is not involved.
- * No need to implement the logic for this function.
- * Call this function when cache needs to read from memory.
- */
-
-
 /*
  * Perform a read from the memory for a particular address.
  * Since this is a cache-simulation, memory is not involved.
@@ -81,7 +72,6 @@ void initialize_cache()
 
 	cache = (block_t**)calloc(num_sets, sizeof(block_t*)); // allocate memory space to cache
 
-
 	for (uint32_t set = 0; set < num_sets; set++) {
     	cache[set] = (block_t *)calloc(cache_associativity, sizeof(block_t));
 	}
@@ -95,7 +85,8 @@ void initialize_cache()
  * Free the allocated memory for the cache to avoid memory leaks.
  */
 void free_cache()
-{	uint32_t num_cache_lines = cache_size / cache_block_size;
+{	
+    uint32_t num_cache_lines = cache_size / cache_block_size;
 	uint32_t num_sets = num_cache_lines / cache_associativity;
 
 	// free memory for each set
@@ -121,7 +112,11 @@ void print_cache_statistics()
 	printf("write hits: %d\n", cache_write_hits);
 }
 
-
+/*
+ * Perform a read from the cache for a particular address.
+ * Since this is a simulation, there is no data. Ignore the data part.
+ * The return value is always a HIT or a MISS and never an ERROR.
+ */
 
 op_result_t read_from_cache(uint32_t pa) 
 {
@@ -129,8 +124,6 @@ op_result_t read_from_cache(uint32_t pa)
     uint32_t num_sets = num_cache_lines / cache_associativity;
     uint32_t set_index = (pa / cache_block_size) % num_sets;
     uint32_t tag = pa / (cache_block_size * num_sets);
-
-    
 
     for (uint32_t i = 0; i < cache_associativity; i++) {
         // Check if the valid bit is set and tag matches block
@@ -155,7 +148,6 @@ op_result_t read_from_cache(uint32_t pa)
         }
     }
 
-
     // Increment stats
     cache_total_accesses++;
     cache_misses++;
@@ -172,7 +164,6 @@ op_result_t read_from_cache(uint32_t pa)
         }
     }
 
-
     // Update the cache with the new block
     cache[set_index][lru_index].valid = 1;
     cache[set_index][lru_index].tag = tag;
@@ -183,6 +174,7 @@ op_result_t read_from_cache(uint32_t pa)
 
     return MISS;
 }
+
 /*
  * Perform a write from the cache for a particular address.
  * Since this is a simulation, there is no data. Ignore the data part.
@@ -245,14 +237,12 @@ op_result_t write_to_cache(uint32_t pa)
     write_to_memory(pa);
 
     return MISS;
-
 }
 
 // Process the S parameter properly and initialize `cache_size`.
 // Return 0 when everything is good. Otherwise return -1.
 int process_arg_S(int opt, char *optarg)
-{
-	   
+{  
     int value = atoi(optarg); //convert optarg to integer
 
     //check if conversion was successful
@@ -289,7 +279,6 @@ int process_arg_A(int opt, char *optarg)
 // Return 0 when everything is good. Otherwise return -1.
 int process_arg_B(int opt, char *optarg)
 {
-	 
     int value = atoi(optarg);//convert optarg to integer
 
     //check if conversion was successful
@@ -306,11 +295,9 @@ int process_arg_B(int opt, char *optarg)
 // When verbose is true, print the details of each operation -- MISS or HIT.
 void handle_cache_verbose(memory_access_entry_t entry, op_result_t ret)
 {
-    {
     if (verbose) {
         char operation_type = entry.accesstype == READ ? 'R' : 'W';
         printf("%c 0x%08x CACHE-%s\n", operation_type, entry.address, ret == HIT ? "HIT" : "MISS");
-    }
     }
 
 	if (ret == ERROR) {
@@ -318,8 +305,32 @@ void handle_cache_verbose(memory_access_entry_t entry, op_result_t ret)
 	}
 }
 
+// Check if all the necessary paramaters for the cache are provided and valid.
+// Return 0 when everything is good. Otherwise return -1.
+int check_cache_parameters_valid()
+{
+	if (cache_size <= 0 || cache_associativity <=0 || cache_block_size <=0){
+		printf("Invalid configuration\n"); //check that parameters are non negative
+		return -1;
+	}
 
+	if(!is_power_of_two(cache_size)||!is_power_of_two(cache_block_size)){
+		printf("Invalid configuration\n");
+		return -1;
+	}
 
+	if(cache_size % (cache_associativity * cache_block_size) !=0){
+		printf("Invalid configuration\n");
+		return -1;
+	}
+
+	if(cache_size < cache_block_size){
+		printf("Invalid configuration\n");
+		return -1;
+	}
+
+	return 0;
+}
 
 //auxiliary is power of 2 func
 int is_power_of_two(uint32_t num){
@@ -332,33 +343,4 @@ int is_power_of_two(uint32_t num){
         num = num / 2;
     }
     return 1;
-}
-
-// Check if all the necessary paramaters for the cache are provided and valid.
-// Return 0 when everything is good. Otherwise return -1.
-int check_cache_parameters_valid()
-{
-	if (cache_size <= 0 || cache_associativity <=0 || cache_block_size <=0){
-		printf("Invalid configuration\n"); //check that parameters are non negative
-		return 1;
-	}
-
-	if(!is_power_of_two(cache_size)||!is_power_of_two(cache_block_size)){//check 
-		printf("Invalid configuration\n");
-		return 1;
-	}
-
-	if(cache_size % (cache_associativity * cache_block_size) !=0){
-		printf("Invalid configuration");
-		return 1;
-	}
-
-	if(cache_size < cache_block_size){
-		printf("Invalid configuration\n");
-		return 1;
-	}
-
-	else {
-		return 0;
-	}
 }
